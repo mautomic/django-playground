@@ -15,9 +15,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from . import jsonify
+from . import table
 
 urlpatterns = [
-    path('jsonify/', jsonify.response),
+    path('table/<str:id>', table.handler),
+    path('table/', table.handler),
     path('admin/', admin.site.urls)
 ]
