@@ -3,6 +3,8 @@ from django.http import HttpResponse, HttpResponseBadRequest
 from redis import BlockingConnectionPool
 from redis.client import Redis
 import json
+import requests
+import urllib.parse
 
 client = Redis(connection_pool=BlockingConnectionPool(max_connections=5))
 
@@ -33,7 +35,7 @@ def post_table(request):
         return HttpResponseBadRequest(response)
 
     data_map = {'data': raw_data.decode("utf-8")}
-    json_data = json.dumps(data_map)
+    json_data = json.dumps(data_map, ensure_ascii=False)
     result = csv_processing.delay(header, json_data)
     response['id'] = result.id
     response['status'] = "processing"
@@ -46,20 +48,37 @@ def csv_processing(header, data):
     data_struct = json.loads(data)
     data_lines = data_struct['data'].splitlines()
     data_start_index = 0
+    date_index = 0
 
     if header == 'True':
         columns = split_by_comma(data_lines[0])
         json_data['header'] = columns
+        for i in range(0, len(columns)):
+            if columns[i].lower() == "date":
+                date_index = i
+                break
         data_start_index = 1
 
     formatted_rows = []
+    temporals = []
     for i in range(data_start_index, len(data_lines)):
         row = data_lines[i]
         formatted_row = split_by_comma(row)
+
+        query_param = urllib.parse.quote(formatted_row[date_index])
+        temporal_response = requests.get("https://stanford-public.alkymi.cloud/getTemporals",
+                                         {"text": query_param})
+
+        if temporal_response.text != "[]":
+            temporals.append(temporal_response.text)
+
+        # TODO: if we don't know which column is the date, to retrieve temporal details, we need to scan the first row
+
         formatted_rows.append(formatted_row)
 
     json_data['rows'] = formatted_rows
-    return json.dumps(json_data)
+    json_data['temporals'] = temporals
+    return json.dumps(json_data, ensure_ascii=False)
 
 
 def split_by_comma(string):
