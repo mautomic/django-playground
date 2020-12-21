@@ -18,7 +18,7 @@ from django.urls import path
 from . import table
 
 urlpatterns = [
-    path('table/<str:id>', table.handler),
+    path('table/<str:task_id>', table.handler),
     path('table/', table.handler),
     path('admin/', admin.site.urls)
 ]

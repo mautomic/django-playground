@@ -1,33 +1,43 @@
 from celery import shared_task
 from django.http import HttpResponse, HttpResponseBadRequest
+from redis import BlockingConnectionPool
+from redis.client import Redis
 import json
 
+client = Redis(connection_pool=BlockingConnectionPool(max_connections=5))
 
-def handler(request, id=None):
+
+def handler(request, task_id=None):
     if request.method == 'GET':
-        return get_table(id)
+        return get_table(task_id)
     elif request.method == 'POST':
         return post_table(request)
 
 
-def get_table(id):
-    if id is not None:
-        return HttpResponse("Will query for json with table id: " + id)
-    return HttpResponseBadRequest("Please send a request with a table id, ie. /table/{xyz}")
+def get_table(task_id):
+    if id is None:
+        return HttpResponseBadRequest("Missing task id as path param, ie. /table/410bf3ba-d77b-4840-8001-18d1888de11f")
+
+    raw_bytes = client.get("celery-task-meta-" + task_id)
+    json_representation = raw_bytes.decode('utf-8')
+    return HttpResponse(json_representation)
 
 
 def post_table(request):
-
     header = request.GET.get('headerRow', 'False')
     raw_data = request.body
+    response = {}
 
     if raw_data is None:
-        return HttpResponseBadRequest("Please send a post request with proper csv data")
+        response = {"status": "error"}
+        return HttpResponseBadRequest(response)
 
     data_map = {'data': raw_data.decode("utf-8")}
     json_data = json.dumps(data_map)
     result = csv_processing.delay(header, json_data)
-    return HttpResponse(result.id)
+    response['id'] = result.id
+    response['status'] = "processing"
+    return HttpResponse(json.dumps(response))
 
 
 @shared_task
