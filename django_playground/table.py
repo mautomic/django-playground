@@ -44,6 +44,6 @@ def post_table(request):
     return HttpResponse(json.dumps(json_data))
 
 
-def split_by_comma(str):
-    items = str.split(',')
+def split_by_comma(string):
+    items = string.split(',')
     return [x.strip() for x in items]
