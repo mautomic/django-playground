@@ -1,3 +1,4 @@
+from celery import shared_task
 from django.http import HttpResponse, HttpResponseBadRequest
 import json
 
@@ -23,10 +24,17 @@ def post_table(request):
     if raw_data is None:
         return HttpResponseBadRequest("Please send a post request with proper csv data")
 
-    json_data = {}
+    data_map = {'data': raw_data.decode("utf-8")}
+    json_data = json.dumps(data_map)
+    result = csv_processing.delay(header, json_data)
+    return HttpResponse(result.id)
 
-    data = raw_data.decode("utf-8")
-    data_lines = data.splitlines()
+
+@shared_task
+def csv_processing(header, data):
+    json_data = {}
+    data_struct = json.loads(data)
+    data_lines = data_struct['data'].splitlines()
     data_start_index = 0
 
     if header == 'True':
@@ -41,7 +49,7 @@ def post_table(request):
         formatted_rows.append(formatted_row)
 
     json_data['rows'] = formatted_rows
-    return HttpResponse(json.dumps(json_data))
+    return json.dumps(json_data)
 
 
 def split_by_comma(string):
