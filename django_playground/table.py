@@ -70,7 +70,7 @@ def csv_processing(header, data):
                                          {"text": query_param})
 
         if temporal_response.text != "[]":
-            temporals.append(temporal_response.text)
+            temporals.append(json.loads(temporal_response.text)[0])
 
         # TODO: if we don't know which column is the date, to retrieve temporal details, we need to scan the first row
 
@@ -78,7 +78,7 @@ def csv_processing(header, data):
 
     json_data['rows'] = formatted_rows
     json_data['temporals'] = temporals
-    return json.dumps(json_data, ensure_ascii=False)
+    return json_data
 
 
 def split_by_comma(string):
