@@ -21,6 +21,8 @@ def get_table(task_id):
         return HttpResponseBadRequest("Missing task id as path param, ie. /table/410bf3ba-d77b-4840-8001-18d1888de11f")
 
     raw_bytes = client.get("celery-task-meta-" + task_id)
+    if raw_bytes is None:
+        return HttpResponse(json.dumps({"status": "not found"}))
     json_representation = raw_bytes.decode('utf-8')
     return HttpResponse(json_representation)
 
